@@ -10,7 +10,7 @@ AM_CPPFLAGS = \
 	$(NULL)
 
 AM_VALAFLAGS = \
-	--vapidir=../vapi --pkg config --pkg custom \
+	--vapidir=../vapi --pkg config --pkg custom --debug \
 	@CONTACTS_PACKAGES@ \
 	--target-glib=$(GLIB_REQUIRED) --gresources=$(top_srcdir)/data/contacts.gresource.xml \
 	$(NULL)
@@ -23,11 +23,24 @@ endif
 bin_PROGRAMS = gnome-contacts
 
 vala_sources = \
+	editor/contacts-editor-addresses-editor.vala \
+	editor/contacts-editor-avatar-editor.vala \
+	editor/contacts-editor-birthday-editor.vala \
+	editor/contacts-editor-composite-editor.vala \
+	editor/contacts-editor-contact-editor.vala \
+	editor/contacts-editor-details-editor-factory.vala \
+	editor/contacts-editor-details-editor.vala \
+	editor/contacts-editor-emails-editor.vala \
+	editor/contacts-editor-full-name-editor.vala \
+	editor/contacts-editor-nickname-editor.vala \
+	editor/contacts-editor-notes-editor.vala \
+	editor/contacts-editor-phones-editor.vala \
+	editor/contacts-editor-urls-editor.vala \
+	\
 	contacts-app.vala \
 	contacts-address-map.vala \
 	contacts-contact.vala \
 	contacts-contact-sheet.vala \
-	contacts-contact-editor.vala \
 	contacts-contact-pane.vala \
 	contacts-types.vala \
 	contacts-in-app-notification.vala \

@@ -57,7 +57,7 @@ public class Contacts.ContactPane : Stack {
 
   [GtkChild]
   private Box contact_editor_page;
-  private ContactEditor editor;
+  private Editor.ContactEditor editor;
 
   private SimpleActionGroup edit_contact_actions;
   private const GLib.ActionEntry[] action_entries = {
@@ -238,7 +238,7 @@ public class Contacts.ContactPane : Stack {
 
     /* edit mode widgetry, third page */
     this.on_edit_mode = false;
-    this.editor = new ContactEditor (this.edit_contact_actions);
+    this.editor = new Editor.ContactEditor (this.edit_contact_actions);
     this.editor.linked_button.clicked.connect (linked_accounts);
     this.editor.remove_button.clicked.connect (delete_contact);
     this.contact_editor_page.add (this.editor);
@@ -268,11 +268,12 @@ public class Contacts.ContactPane : Stack {
   void on_add_detail (GLib.SimpleAction action, GLib.Variant? parameter) {
     var tok = action.name.split (".");
 
-    if (tok[0] == "add") {
-      editor.add_new_row_for_property (contact.find_primary_persona (),
-				       tok[1],
-				       tok.length > 2 ? tok[2].up () : null);
-    }
+    // XXX
+    /* if (tok[0] == "add") { */
+    /*   editor.add_new_row_for_property (contact.find_primary_persona (), */
+				       /* tok[1], */
+				       /* tok.length > 2 ? tok[2].up () : null); */
+    /* } */
   }
 
   void linked_accounts () {
@@ -300,72 +301,40 @@ public class Contacts.ContactPane : Stack {
       return;
 
     if (on_edit) {
-      if (contact == null) {
-	return;
-      }
+      if (this.contact == null)
+        return;
 
-      on_edit_mode = true;
+      this.on_edit_mode = true;
 
-      sheet.clear ();
+      this.sheet.clear ();
 
       if (suggestion_grid != null) {
-	suggestion_grid.destroy ();
-	suggestion_grid = null;
+        this.suggestion_grid.destroy ();
+        this.suggestion_grid = null;
       }
 
-      editor.clear ();
-      editor.edit (contact);
-      editor.show_all ();
+      this.editor.clear ();
+      this.editor.edit (contact);
+      this.editor.show_all ();
       set_visible_child (this.contact_editor_page);
     } else {
-      on_edit_mode = false;
+      this.on_edit_mode = false;
       /* saving changes */
       if (!drop_changes) {
-	foreach (var prop in editor.properties_changed ().entries) {
-	  Contact.set_persona_property.begin (prop.value.persona, prop.key, prop.value.value,
-					      (obj, result) => {
-						try {
-						  Contact.set_persona_property.end (result);
-						} catch (Error e2) {
-						  App.app.show_message (e2.message);
-						  update_sheet ();
-						}
-					      });
-	}
-
-	if (editor.name_changed ()) {
-	  var v = editor.get_full_name_value ();
-	  Contact.set_individual_property.begin (contact,
-						 "full-name", v,
-						 (obj, result) => {
-						   try {
-						     Contact.set_individual_property.end (result);
-						   } catch (Error e) {
-						     App.app.show_message (e.message);
-						     /* FIXME: add this back */
-						     /* l.set_markup (Markup.printf_escaped ("<span font='16'>%s</span>", contact.display_name)); */
-						   }
-						 });
-	}
-	if (editor.avatar_changed ()) {
-	  var v = editor.get_avatar_value ();
-	  Contact.set_individual_property.begin (contact,
-						 "avatar", v,
-						 (obj, result) => {
-						   try {
-						     Contact.set_individual_property.end (result);
-						   } catch (GLib.Error e) {
-						     App.app.show_message (e.message);
-						   }
-						 });
-	}
+        this.editor.save_changes.begin ( (obj, res) => {
+            try {
+              this.editor.save_changes.end (res);
+            } catch (Error e) {
+              App.app.show_message (e.message);
+              update_sheet ();
+            }
+          });
       }
+      this.editor.clear ();
 
-      editor.clear ();
-
-      if (contact != null) {
-        sheet.clear ();
-        sheet.update (contact);
+      if (this.contact != null) {
+        this.sheet.clear ();
+        this.sheet.update (contact);
         set_visible_child (this.contact_sheet_page);
       } else {
         set_visible_child (this.none_selected_page);
@@ -390,48 +359,19 @@ public class Contacts.ContactPane : Stack {
 
   // Creates a new contact from the details in the ContactEditor
   public async void create_contact () {
-    var details = new HashTable<string, Value?> (str_hash, str_equal);
-    var contacts_store = App.app.contacts_store;
-
-    // Collect the details from the editor
-    if (editor.name_changed ())
-      details["full-name"] = this.editor.get_full_name_value ();
-
-    if (editor.avatar_changed ())
-      details["avatar"] = this.editor.get_avatar_value ();
-
-    foreach (var prop in this.editor.properties_changed ().entries)
-      details[prop.key] = prop.value.value;
-
     // Leave edit mode
     set_edit_mode (false, true);
 
-    if (details.size () == 0) {
-      show_message_dialog (_("You need to enter some data"));
-      return;
-    }
-
-    if (contacts_store.aggregator.primary_store == null) {
-      show_message_dialog (_("No primary addressbook configured"));
-      return;
-    }
-
-    // Create the contact
-    var primary_store = contacts_store.aggregator.primary_store;
-    Persona? persona = null;
     try {
-      persona = yield Contact.create_primary_persona_for_details (primary_store, details);
+      var contact = yield this.editor.save_changes ();
+      // Now show it to the user
+      if (contact != null)
+        App.app.show_contact (contact);
+      else
+        show_message_dialog (_("Unable to find newly created contact"));
     } catch (Error e) {
       show_message_dialog (_("Unable to create new contacts: %s").printf (e.message));
-      return;
     }
-
-    // Now show it to the user
-    var contact = contacts_store.find_contact_with_persona (persona);
-    if (contact != null)
-      App.app.show_contact (contact);
-    else
-      show_message_dialog (_("Unable to find newly created contact"));
   }
 
   private void show_message_dialog (string message) {

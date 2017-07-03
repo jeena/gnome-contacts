@@ -49,7 +49,7 @@
     </item>
   </menu>
 
-  <template class="ContactsContactEditor" parent="GtkGrid">
+  <template class="ContactsEditorContactEditor" parent="GtkGrid">
     <property name="visible">True</property>
     <property name="orientation">vertical</property>
     <child>
